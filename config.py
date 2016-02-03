@@ -1,0 +1,5 @@
+MYSQL_USER = 'root'
+MYSQL_PASS = '123456'
+MYSQL_HOST = 'localhost'
+MYSQL_PORT = '3306'
+MYSQL_DB = 'test'
