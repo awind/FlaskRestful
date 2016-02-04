@@ -1,24 +1,23 @@
 from app import app, db, auth
 from flask import request, g, jsonify, abort
-from .model import User, Book, user_schema, users_schema, book_schema, books_schema
-
-
-@app.route('/api/token')
-@auth.login_required
-def get_auth_token():
-    token = g.user.generate_auth_token()
-    return jsonify({'token': token.decode('ascii') })
+from .model import User, Book, user_schema, users_schema, book_schema, books_schema, token_required
 
 
 @auth.verify_password
-def verify_password(username_or_token, password):
-    user = User.verify_auth_token(username_or_token)
-    if not user:
-        user = User.query.filter_by(username=username_or_token).first()
-        if not user or not user.verify_password(password):
-            return False
+def verify_password(username, password):
+    user = User.query.filter_by(username=username).first()
+    if not user or not user.verify_password(password):
+        return False
     g.user = user
     return True
+
+
+@app.route('/api/login', methods=['POST'])
+@auth.login_required
+def login():
+    user = g.user
+    token = user.generate_auth_token()
+    return jsonify(username=user.username, token=token.decode('ascii'))
 
 
 @app.route('/api/user', methods = ['POST'])
@@ -36,7 +35,7 @@ def create_user():
 
 
 @app.route('/api/user/<int:userid>', methods=['GET'])
-@auth.login_required
+@token_required
 def get_user(userid):
     user = User.query.get(userid)
     if not user:
@@ -44,24 +43,8 @@ def get_user(userid):
     return user_schema.jsonify(user)
 
 
-@app.route('/api/user/<int:userid>', methods=['DELETE'])
-@auth.login_required
-def delete_user(userid):
-    user = User.query.get(userid)
-    if not user:
-        abort(400)
-    user.save()
-    return jsonify(status="success")
-
-
-@app.route('/api/resource')
-@auth.login_required
-def get_resource():
-    return jsonify({'data': 'Hello, %s!' % g.user.username})
-
-
-@app.route('/api/user/<int:userid>/book', methods=['POST'])
-@auth.login_required
+@app.route('/api/book', methods=['POST'])
+@token_required
 def create_book(userid):
     user = User.query.get(userid)
     if not user:
@@ -75,8 +58,8 @@ def create_book(userid):
     return jsonify(status="success")
 
 
-@app.route('/api/user/<int:userid>/book', methods=['GET'])
-@auth.login_required
+@app.route('/api/book', methods=['GET'])
+@token_required
 def get_books(userid):
     user = User.query.get(userid)
     if not user:
@@ -86,8 +69,8 @@ def get_books(userid):
     return jsonify(books=result.data)
 
 
-@app.route('/api/user/<int:userid>/book/<int:bookid>', methods=['GET'])
-@auth.login_required
+@app.route('/api/book/<int:bookid>', methods=['GET'])
+@token_required
 def get_book(userid, bookid):
     book = Book.query.filter_by(user_id=userid, id=bookid).first()
     if not book:
@@ -95,8 +78,8 @@ def get_book(userid, bookid):
     return book_schema.jsonify(book)
 
 
-@app.route('/api/user/<int:userid>/book/<int:bookid>', methods=['DELETE'])
-@auth.login_required
+@app.route('/api/book/<int:bookid>', methods=['DELETE'])
+@token_required
 def delete_book(userid, bookid):
     book = Book.query.filter_by(user_id=userid, id=bookid).first()
     if not book:

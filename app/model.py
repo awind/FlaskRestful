@@ -2,6 +2,24 @@ from app import app, ma, db
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from itsdangerous import SignatureExpired, BadSignature
 from passlib.apps import custom_app_context as pwd_context
+from functools import wraps
+from flask import jsonify, request
+
+def token_required(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        token = request.headers.get('token')
+        s = Serializer(app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token)
+        except SignatureExpired:
+            return jsonify({'status': 'fail', 'msg': 'expired token'})
+        except BadSignature:
+            return jsonify({'status': 'fail', 'msg': 'useless token'})
+        kwargs['userid'] = data['id']
+        return func(*args, **kwargs)
+    return wrapper
+
 
 class User(db.Model):
     __tablename__ = 'user'
@@ -20,7 +38,7 @@ class User(db.Model):
     def verify_password(self, password):
         return pwd_context.verify(password, self.password_hash)
 
-    def generate_auth_token(self, expiration = 600):
+    def generate_auth_token(self, expiration=1440*31*60):
         s = Serializer(app.config['SECRET_KEY'], expires_in = expiration)
         return s.dumps({'id': self.id})
 
