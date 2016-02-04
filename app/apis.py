@@ -34,7 +34,7 @@ def create_user():
     return user_schema.jsonify(user)
 
 
-@app.route('/api/user/<int:userid>', methods=['GET'])
+@app.route('/api/user', methods=['GET'])
 @token_required
 def get_user(userid):
     user = User.query.get(userid)
