@@ -1,5 +1,5 @@
-from app import app, db, auth
-from flask import request, g, jsonify, abort
+from app import app, auth
+from flask import request, g, jsonify, make_response,abort
 from .model import User, Book, user_schema, users_schema, book_schema, books_schema, token_required
 
 
@@ -11,6 +11,14 @@ def verify_password(username, password):
     g.user = user
     return True
 
+@auth.error_handler
+def unauthorized():
+    return make_response(jsonify({'error': 'Unauthorized access.'}), 403)
+
+@app.errorhandler(400)
+def bad_request(error):
+    return make_response(jsonify({'error': 'Invalid argument.'}), 400)
+
 
 @app.route('/api/login', methods=['POST'])
 @auth.login_required
@@ -20,7 +28,7 @@ def login():
     return jsonify(username=user.username, token=token.decode('ascii'))
 
 
-@app.route('/api/user', methods = ['POST'])
+@app.route('/api/user', methods=['POST'])
 def create_user():
     username = request.json['username']
     password = request.json['password']
@@ -86,8 +94,3 @@ def delete_book(userid, bookid):
         abort(400)
     book.delete()
     return jsonify(status='success')
-
-
-
-
-
